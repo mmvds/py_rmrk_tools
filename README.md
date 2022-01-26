@@ -28,7 +28,7 @@ nfts_to_send_dict = {
     '10858569-b2379dab465991a730-VICTOR R-TEST_NFT7_AI_GENERATED-0000000000000010': 'GbzZaxQG7d2M7ykb8CoofDvfn1t8iqzDHjvXPxnkiCTRmfJ',
 }
 
-# send nfts according to a list
+# send nfts according to a dict
 send_send_extrinsics(nfts_to_send_dict, '1.0.0', keypair)
 ```
 ## Emote nfts
