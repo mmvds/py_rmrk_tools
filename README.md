@@ -51,3 +51,5 @@ keypair = keypair_from_mnemonic(wallet_mnemonic)
 
 send_buy_extrinsic('10807786-b2379dab465991a730-VICTOR R-TEST_NFT3_AI_GENERATED-0000000000000006', 'GbzZaxQG7d2M7ykb8CoofDvfn1t8iqzDHjvXPxnkiCTRmfJ', 0.01, '1.0.0', keypair, False)
 ```
+## Mint collection
+https://github.com/mmvds/py_rmrk_tools/blob/main/examples/mint_collection.py
