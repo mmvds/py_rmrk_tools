@@ -34,7 +34,7 @@ def generate_list_calls(
         nfts_for_listing,
         ksm_price,
         version,
-        batch_amount=100):
+        batch_amount=list_batch_amount):
     rmrk_calls = []
     list_calls = []
 
@@ -56,7 +56,10 @@ def generate_list_calls(
     return list_calls
 
 
-def generate_send_calls(nfts_to_send_dict, version, batch_amount=100):
+def generate_send_calls(
+        nfts_to_send_dict,
+        version,
+        batch_amount=send_batch_amount):
     rmrk_calls = []
     send_calls = []
 
@@ -78,7 +81,11 @@ def generate_send_calls(nfts_to_send_dict, version, batch_amount=100):
     return send_calls
 
 
-def generate_emote_calls(nfts_to_emote, emote_list, version, batch_amount=100):
+def generate_emote_calls(
+        nfts_to_emote,
+        emote_list,
+        version,
+        batch_amount=emote_batch_amount):
     rmrk_calls = []
     emote_calls = []
 
@@ -101,6 +108,35 @@ def generate_emote_calls(nfts_to_emote, emote_list, version, batch_amount=100):
     return emote_calls
 
 
+def generate_mint_calls(
+        nfts_info_to_mint,
+        version,
+        recipient="",
+        batch_amount=mint_batch_amount):
+    rmrk_calls = []
+    mint_calls = []
+
+    nfts_batch = []
+    for nft_info_json in nfts_info_to_mint:
+        rmrk_line = f"RMRK::MINTNFT::{version}::{urllib.parse.quote(json.dumps(nft_info_json, separators=(',', ':')))}"
+        if recipient:
+            rmrk_line += f"::{recipient}"
+        rmrk_calls.append({
+            'call_module': 'System',
+            'call_function': 'remark',
+            'call_args': {'remark': rmrk_line}
+        })
+        if len(
+                rmrk_calls) >= batch_amount or nft_info_json == nfts_info_to_mint[-1]:
+            mint_calls.append(substrate.compose_call(
+                call_module="Utility",
+                call_function="batch",
+                call_params={'calls': rmrk_calls}
+            ))
+            rmrk_calls = []
+    return mint_calls
+
+
 def send_generated_calls(generated_calls, keypair):
     for generated_call in generated_calls:
         extrinsic = substrate.create_signed_extrinsic(
@@ -110,21 +146,46 @@ def send_generated_calls(generated_calls, keypair):
         send_extrinsic(extrinsic)
 
 
-def send_send_extrinsics(nfts_to_send_dict, version, keypair):
+def send_send_extrinsics(
+        nfts_to_send_dict,
+        version,
+        keypair,
+        batch_amount=send_batch_amount):
     generated_calls = generate_send_calls(
-        nfts_to_send_dict, version, send_batch_amount)
+        nfts_to_send_dict, version, batch_amount)
     send_generated_calls(generated_calls, keypair)
 
 
-def send_emote_extrinsics(nfts_to_emote, emote_list, version, keypair):
+def send_emote_extrinsics(
+        nfts_to_emote,
+        emote_list,
+        version,
+        keypair,
+        batch_amount=emote_batch_amount):
     generated_calls = generate_emote_calls(
-        nfts_to_emote, emote_list, version, emote_batch_amount)
+        nfts_to_emote, emote_list, version, batch_amount)
     send_generated_calls(generated_calls, keypair)
 
 
-def send_list_extrinsics(nfts_for_listing, ksm_price, version, keypair):
+def send_list_extrinsics(
+        nfts_for_listing,
+        ksm_price,
+        version,
+        keypair,
+        batch_amount=list_batch_amount):
     generated_calls = generate_list_calls(
-        nfts_for_listing, ksm_price, version, list_batch_amount)
+        nfts_for_listing, ksm_price, version, batch_amount)
+    send_generated_calls(generated_calls, keypair)
+
+
+def send_mint_extrinsics(
+        nfts_info_to_mint,
+        version,
+        keypair,
+        recipient="",
+        batch_amount=mint_batch_amount):
+    generated_calls = generate_mint_calls(
+        nfts_info_to_mint, version, recipient, batch_amount)
     send_generated_calls(generated_calls, keypair)
 
 
@@ -187,7 +248,14 @@ def generate_collection_id(keypair, collection_symbol):
     return pub_key[:10] + pub_key[-8:] + '-' + collection_symbol.upper()
 
 
-def mint_collection(name, symbol, metadata, version, keypair, max_amount=0):
+def mint_collection(
+        name,
+        symbol,
+        metadata,
+        version,
+        keypair,
+        max_amount=0,
+        recipient=""):
     mint_json = {
         "name": name,
         "max": max_amount,
@@ -197,4 +265,6 @@ def mint_collection(name, symbol, metadata, version, keypair, max_amount=0):
         "metadata": metadata
     }
     extrinsic_text = f"RMRK::MINT::{version}::{urllib.parse.quote(json.dumps(mint_json, separators=(',', ':')))}"
+    if recipient:
+        extrinsic_text += f"::{recipient}"
     send_system_extrinsic(extrinsic_text, keypair)
