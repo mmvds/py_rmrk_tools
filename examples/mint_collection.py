@@ -1,9 +1,9 @@
+import sys
+sys.path.append('../')
 from pinatapy import PinataPy
 from py_rmrk_tools import *
 from py_rmrk_tools_config import *
 import pinatapy
-import sys
-sys.path.append('../')
 
 
 keypair = keypair_from_mnemonic(wallet_mnemonic)
