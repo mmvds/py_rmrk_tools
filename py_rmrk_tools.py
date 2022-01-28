@@ -196,5 +196,5 @@ def mint_collection(name, symbol, metadata, version, keypair, max_amount=0):
         "id": generate_collection_id(keypair, symbol),
         "metadata": metadata
     }
-    extrinsic_text = f"RMRK::MINT::{version}::{urllib.parse.quote_plus(json.dumps(mint_json, separators=(',', ':')))}"
+    extrinsic_text = f"RMRK::MINT::{version}::{urllib.parse.quote(json.dumps(mint_json, separators=(',', ':')))}"
     send_system_extrinsic(extrinsic_text, keypair)
