@@ -5,6 +5,18 @@ You have to set your mnemonic phrase in py_rmrk_tools_config.py
 ```python
 wallet_mnemonic = '<wallet seed phrase>'
 ```
+and Pinata api keys
+```python
+pinata_api_key = "pinata_api_key"
+pinata_secret_api_key = "pinata_secret_api_key"
+```
+
+Production nodes:
+wss://kusama-rpc.polkadot.io/ or wss://node.rmrk.app/
+
+Testnet node (for https://singular-rmrk1-dev.vercel.app/):
+wss://staging.node.rmrk.app/
+
 # Examples
 https://github.com/mmvds/py_rmrk_tools/tree/main/examples
 
