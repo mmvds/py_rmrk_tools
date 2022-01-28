@@ -5,8 +5,8 @@ wss_url = "wss://staging.node.rmrk.app/" #testnet
 ss58_format_id = 2
 
 # pinata keys
-pinata_api_key = "pinata_api_key"
-pinata_secret_api_key = "pinata_secret_api_key"
+pinata_api_key = "<pinata_api_key>"
+pinata_secret_api_key = "<pinata_secret_api_key>"
 
 # your wallet
 wallet_mnemonic = '<wallet seed phrase>'
@@ -15,6 +15,7 @@ wallet_mnemonic = '<wallet seed phrase>'
 send_batch_amount = 100
 list_batch_amount = 100
 emote_batch_amount = 100
+mint_batch_amount = 100
 
 # kanaria and singular marketplace fee
 kanaria_fee = 5
