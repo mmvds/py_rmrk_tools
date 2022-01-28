@@ -65,3 +65,6 @@ send_buy_extrinsic('10807786-b2379dab465991a730-VICTOR R-TEST_NFT3_AI_GENERATED-
 ```
 ## Mint collection
 https://github.com/mmvds/py_rmrk_tools/blob/main/examples/mint_collection.py
+
+## Mass mint nfts
+https://github.com/mmvds/py_rmrk_tools/blob/main/examples/mint_nfts.py
