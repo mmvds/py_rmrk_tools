@@ -1,7 +1,12 @@
 # substrate config
 # wss_url = "wss://kusama-rpc.polkadot.io/"
-wss_url = "wss://node.rmrk.app/"
+# wss_url = "wss://node.rmrk.app/"
+wss_url = "wss://staging.node.rmrk.app/" #testnet
 ss58_format_id = 2
+
+# pinata keys
+pinata_api_key = "pinata_api_key"
+pinata_secret_api_key = "pinata_secret_api_key"
 
 # your wallet
 wallet_mnemonic = '<wallet seed phrase>'
