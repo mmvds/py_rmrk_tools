@@ -20,15 +20,16 @@ def keypair_from_mnemonic(mnemonic_phrase):
 
 
 def send_extrinsic(extrinsic):
+    block_hash = ""
     try:
         receipt = substrate.submit_extrinsic(
             extrinsic, wait_for_inclusion=True)
         print(
             f"Extrinsic '{receipt.extrinsic_hash}' sent and included in block '{receipt.block_hash}'")
-
+        block_hash = receipt.block_hash
     except SubstrateRequestException as e:
         print(f"Failed to send: {e}")
-
+    return block_hash
 
 def generate_list_calls(
         nfts_for_listing,
@@ -115,6 +116,8 @@ def generate_mint_calls(
         batch_amount=mint_batch_amount):
     rmrk_calls = []
     mint_calls = []
+    nfts_in_block = []
+    nfts_in_batch = []
 
     nfts_batch = []
     for nft_info_json in nfts_info_to_mint:
@@ -126,24 +129,29 @@ def generate_mint_calls(
             'call_function': 'remark',
             'call_args': {'remark': rmrk_line}
         })
-        if len(
-                rmrk_calls) >= batch_amount or nft_info_json == nfts_info_to_mint[-1]:
+        
+        nfts_in_block.append(f"{nft_info_json['collection']}-{nft_info_json['instance']}-{nft_info_json['sn']}")
+        if len(rmrk_calls) >= batch_amount or nft_info_json == nfts_info_to_mint[-1]:
             mint_calls.append(substrate.compose_call(
                 call_module="Utility",
                 call_function="batch",
                 call_params={'calls': rmrk_calls}
             ))
+            nfts_in_batch.append(nfts_in_block)
             rmrk_calls = []
-    return mint_calls
+            nfts_in_block = []
+    return mint_calls, nfts_in_batch
 
 
 def send_generated_calls(generated_calls, keypair):
+    block_hashes = []
     for generated_call in generated_calls:
         extrinsic = substrate.create_signed_extrinsic(
             call=generated_call,
             keypair=keypair,
         )
-        send_extrinsic(extrinsic)
+        block_hashes.append(send_extrinsic(extrinsic))
+    return block_hashes
 
 
 def send_send_extrinsics(
@@ -153,8 +161,7 @@ def send_send_extrinsics(
         batch_amount=send_batch_amount):
     generated_calls = generate_send_calls(
         nfts_to_send_dict, version, batch_amount)
-    send_generated_calls(generated_calls, keypair)
-
+    return send_generated_calls(generated_calls, keypair)
 
 def send_emote_extrinsics(
         nfts_to_emote,
@@ -164,7 +171,7 @@ def send_emote_extrinsics(
         batch_amount=emote_batch_amount):
     generated_calls = generate_emote_calls(
         nfts_to_emote, emote_list, version, batch_amount)
-    send_generated_calls(generated_calls, keypair)
+    return send_generated_calls(generated_calls, keypair)
 
 
 def send_list_extrinsics(
@@ -175,7 +182,7 @@ def send_list_extrinsics(
         batch_amount=list_batch_amount):
     generated_calls = generate_list_calls(
         nfts_for_listing, ksm_price, version, batch_amount)
-    send_generated_calls(generated_calls, keypair)
+    return send_generated_calls(generated_calls, keypair)
 
 
 def send_mint_extrinsics(
@@ -184,9 +191,22 @@ def send_mint_extrinsics(
         keypair,
         recipient="",
         batch_amount=mint_batch_amount):
-    generated_calls = generate_mint_calls(
+    minted_nfts = []
+    generated_calls, nfts_in_batch = generate_mint_calls(
         nfts_info_to_mint, version, recipient, batch_amount)
-    send_generated_calls(generated_calls, keypair)
+    for i in range(len(generated_calls)):
+        generated_call = generated_calls[i]
+        nfts_in_block = nfts_in_batch[i]
+        extrinsic = substrate.create_signed_extrinsic(
+            call=generated_call,
+            keypair=keypair,
+        )
+        block_hash = send_extrinsic(extrinsic)
+        block_number = substrate.get_block_number(block_hash)
+        for nft_in_block in nfts_in_block:
+            minted_nfts.append(f'{block_number}-{nft_in_block}')
+
+    return minted_nfts
 
 
 def send_system_extrinsic(extrinsic_text, keypair):
@@ -200,7 +220,7 @@ def send_system_extrinsic(extrinsic_text, keypair):
         call=generated_call,
         keypair=keypair,
     )
-    send_extrinsic(extrinsic)
+    return send_extrinsic(extrinsic)
 
 
 def send_buy_extrinsic(
@@ -240,7 +260,7 @@ def send_buy_extrinsic(
         ),
         keypair=keypair,
     )
-    send_extrinsic(extrinsic)
+    return send_extrinsic(extrinsic)
 
 
 def generate_collection_id(keypair, collection_symbol):
@@ -267,4 +287,4 @@ def mint_collection(
     extrinsic_text = f"RMRK::MINT::{version}::{urllib.parse.quote(json.dumps(mint_json, separators=(',', ':')))}"
     if recipient:
         extrinsic_text += f"::{recipient}"
-    send_system_extrinsic(extrinsic_text, keypair)
+    return send_system_extrinsic(extrinsic_text, keypair)
