@@ -14,7 +14,7 @@ pinata = PinataPy(pinata_api_key, pinata_secret_api_key)
 nfts_info_dict = {}
 
 # generate nfts info list
-collection_id = "c4ef7d5f96b88a6675-TST2"
+collection_id = "c4ef7d5f96b88a6675-TST4"
 for i in range(1, 11):
     nft_description = f"Bla-bla-bla {i}"
     nft_name = f"Best Test Nft {i}"
@@ -101,4 +101,8 @@ for i in sorted(nfts_info_dict):
     nfts_info_to_mint.append(nft_info)
 
 # mint them all
-send_mint_extrinsics(nfts_info_to_mint, '1.0.0', keypair)
+minted_nfts = send_mint_extrinsics(nfts_info_to_mint, '1.0.0', keypair)
+print(minted_nfts)
+with open('mint_log.txt', 'w') as f:
+    for minted_nft in minted_nfts:
+        f.write(f"{minted_nft}\n")
