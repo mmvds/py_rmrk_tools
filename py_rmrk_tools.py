@@ -121,7 +121,7 @@ def generate_mint_calls(
 
     nfts_batch = []
     for nft_info_json in nfts_info_to_mint:
-        rmrk_line = f"RMRK::MINTNFT::{version}::{urllib.parse.quote(json.dumps(nft_info_json, separators=(',', ':')))}"
+        rmrk_line = f"RMRK::{mintntf_operation_dict[version]}::{version}::{urllib.parse.quote(json.dumps(nft_info_json, separators=(',', ':')))}"
         if recipient:
             rmrk_line += f"::{recipient}"
         rmrk_calls.append({
@@ -130,7 +130,7 @@ def generate_mint_calls(
             'call_args': {'remark': rmrk_line}
         })
         
-        nfts_in_block.append(f"{nft_info_json['collection']}-{nft_info_json['instance']}-{nft_info_json['sn']}")
+        nfts_in_block.append(f"{nft_info_json['collection']}-{nft_info_json['symbol']}-{nft_info_json['sn']}")
         if len(rmrk_calls) >= batch_amount or nft_info_json == nfts_info_to_mint[-1]:
             mint_calls.append(substrate.compose_call(
                 call_module="Utility",
@@ -197,15 +197,18 @@ def send_mint_extrinsics(
     for i in range(len(generated_calls)):
         generated_call = generated_calls[i]
         nfts_in_block = nfts_in_batch[i]
-        extrinsic = substrate.create_signed_extrinsic(
-            call=generated_call,
-            keypair=keypair,
-        )
-        block_hash = send_extrinsic(extrinsic)
-        block_number = substrate.get_block_number(block_hash)
-        for nft_in_block in nfts_in_block:
-            minted_nfts.append(f'{block_number}-{nft_in_block}')
-
+        try:
+            extrinsic = substrate.create_signed_extrinsic(
+                call=generated_call,
+                keypair=keypair,
+            )
+            block_hash = send_extrinsic(extrinsic)
+            block_number = substrate.get_block_number(block_hash)
+            for nft_in_block in nfts_in_block:
+                minted_nfts.append(f'{block_number}-{nft_in_block}')
+        except Exception as e:
+            print(f"Failed to mint: {e}")
+            break
     return minted_nfts
 
 
@@ -267,15 +270,21 @@ def generate_collection_id(keypair, collection_symbol):
     pub_key = keypair.public_key.hex()
     return pub_key[:10] + pub_key[-8:] + '-' + collection_symbol.upper()
 
+# {
+#   "name": "Dot Leap Early Promoters",
+#   "max": 100,
+#   "issuer": "CpjsLDC1JFyrhm3ftC9Gs4QoyrkHKhZKtK7YqGTRFtTafgp",
+#   "symbol": "DLEP",
+#   "id": "0aff6865bed3a66b-DLEP",
+#   "metadata": "ipfs://ipfs/QmVgs8P4awhZpFXhkkgnCwBp4AdKRj3F9K58mCZ6fxvn3j"
+# }
 
-def mint_collection(
+def mint_collection_v1(
         name,
         symbol,
         metadata,
-        version,
         keypair,
-        max_amount=0,
-        recipient=""):
+        max_amount=0):
     mint_json = {
         "name": name,
         "max": max_amount,
@@ -284,7 +293,29 @@ def mint_collection(
         "id": generate_collection_id(keypair, symbol),
         "metadata": metadata
     }
-    extrinsic_text = f"RMRK::MINT::{version}::{urllib.parse.quote(json.dumps(mint_json, separators=(',', ':')))}"
-    if recipient:
-        extrinsic_text += f"::{recipient}"
+    extrinsic_text = f"RMRK::MINT::1.0.0::{urllib.parse.quote(json.dumps(mint_json, separators=(',', ':')))}"
+    return send_system_extrinsic(extrinsic_text, keypair)
+
+
+# {
+#   "max": 100,
+#   "issuer": "CpjsLDC1JFyrhm3ftC9Gs4QoyrkHKhZKtK7YqGTRFtTafgp",
+#   "symbol": "DLEP",
+#   "id": "0aff6865bed3a66b-DLEP",
+#   "metadata": "ipfs://ipfs/QmVgs8P4awhZpFXhkkgnCwBp4AdKRj3F9K58mCZ6fxvn3j"
+# }
+
+def mint_collection_v2(
+        symbol,
+        metadata,
+        keypair,
+        max_amount=0):
+    mint_json = {
+        "max": max_amount,
+        "issuer": str(ss58_encode(keypair.public_key, 2)),
+        "symbol": symbol.upper(),
+        "id": generate_collection_id(keypair, symbol),
+        "metadata": metadata
+    }
+    extrinsic_text = f"RMRK::CREATE::2.0.0::{urllib.parse.quote(json.dumps(mint_json, separators=(',', ':')))}"
     return send_system_extrinsic(extrinsic_text, keypair)
