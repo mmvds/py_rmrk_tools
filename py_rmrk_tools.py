@@ -1,7 +1,7 @@
 import urllib
 import json
 from py_rmrk_tools_config import *
-from substrateinterface import SubstrateInterface, Keypair
+from substrateinterface import SubstrateInterface, Keypair, KeypairType
 from substrateinterface.exceptions import SubstrateRequestException
 from substrateinterface.utils.ss58 import ss58_decode, ss58_encode
 
@@ -14,10 +14,15 @@ substrate = SubstrateInterface(
 def to_rmrk_price(ksm_price, version):
     return round(ksm_price * 10**12 * (1 - fee_dict[version] / 100))
 
+def keypair_from_str(key_string):
+    if ' ' in key_string:  # mnemonic
+        return Keypair.create_from_mnemonic(
+            key_string, ss58_format=ss58_format_id)
+    elif len(key_string) == 66 and key_string[:2] == '0x':
+        return Keypair.create_from_seed(key_string, ss58_format=ss58_format_id)
 
 def keypair_from_mnemonic(mnemonic_phrase):
-    return Keypair.create_from_mnemonic(mnemonic_phrase)
-
+    return Keypair.create_from_mnemonic(mnemonic_phrase, ss58_format=ss58_format_id)
 
 def send_extrinsic(extrinsic):
     block_hash = ""
@@ -27,7 +32,7 @@ def send_extrinsic(extrinsic):
         print(
             f"Extrinsic '{receipt.extrinsic_hash}' sent and included in block '{receipt.block_hash}'")
         block_hash = receipt.block_hash
-    except SubstrateRequestException as e:
+    except Exception as e:
         print(f"Failed to send: {e}")
     return block_hash
 
@@ -129,8 +134,8 @@ def generate_mint_calls(
             'call_function': 'remark',
             'call_args': {'remark': rmrk_line}
         })
-        
-        nfts_in_block.append(f"{nft_info_json['collection']}-{nft_info_json['symbol']}-{nft_info_json['sn']}")
+
+        nfts_in_block.append(f"{nft_info_json['collection']}-{nft_info_json.get('symbol', nft_info_json['instance'])}-{nft_info_json['sn']}")
         if len(rmrk_calls) >= batch_amount or nft_info_json == nfts_info_to_mint[-1]:
             mint_calls.append(substrate.compose_call(
                 call_module="Utility",
@@ -265,6 +270,13 @@ def send_buy_extrinsic(
     )
     return send_extrinsic(extrinsic)
 
+def change_issuer(
+        collection_id,
+        new_owner_address,
+        version,
+        keypair):
+    extrinsic_text = f"RMRK::CHANGEISSUER::{version}::{collection_id}::{new_owner_address}"
+    return send_system_extrinsic(extrinsic_text, keypair)
 
 def generate_collection_id(keypair, collection_symbol):
     pub_key = keypair.public_key.hex()
@@ -294,6 +306,7 @@ def mint_collection_v1(
         "metadata": metadata
     }
     extrinsic_text = f"RMRK::MINT::1.0.0::{urllib.parse.quote(json.dumps(mint_json, separators=(',', ':')))}"
+    print(f'Creating {generate_collection_id(keypair, symbol)} collection')
     return send_system_extrinsic(extrinsic_text, keypair)
 
 
@@ -318,4 +331,5 @@ def mint_collection_v2(
         "metadata": metadata
     }
     extrinsic_text = f"RMRK::CREATE::2.0.0::{urllib.parse.quote(json.dumps(mint_json, separators=(',', ':')))}"
+    print(f'Creating {generate_collection_id(keypair, symbol)} collection')
     return send_system_extrinsic(extrinsic_text, keypair)
