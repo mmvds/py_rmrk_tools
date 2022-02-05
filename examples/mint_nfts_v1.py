@@ -101,7 +101,7 @@ for i in sorted(nfts_info_dict):
     nfts_info_to_mint.append(nft_info)
 
 # mint them all
-minted_nfts = send_mint_extrinsics(nfts_info_to_mint, '2.0.0', keypair)
+minted_nfts = send_mint_extrinsics(nfts_info_to_mint, '1.0.0', keypair)
 print(minted_nfts)
 with open('mint_log.txt', 'w') as f:
     for minted_nft in minted_nfts:
