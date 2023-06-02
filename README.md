@@ -18,13 +18,16 @@ nft_storage_api_key = "your_nft_storage_api_key"
 ```
 
 Production nodes:
-wss://kusama-rpc.polkadot.io/ or wss://node.rmrk.app/
-
-Testnet node (for https://singular-rmrk1-dev.vercel.app/):
-wss://staging.node.rmrk.app/
+wss://kusama-rpc.polkadot.io/
 
 # Examples
 https://github.com/mmvds/py_rmrk_tools/tree/main/examples
+
+## Pin to ipfs via nft.storage
+```python
+pin_nft_file(nft_image_path)
+pin_nft_json(nft_json)
+```
 
 ## List nfts
 ```python
