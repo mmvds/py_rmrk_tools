@@ -72,3 +72,6 @@ v2 https://github.com/mmvds/py_rmrk_tools/blob/main/examples/mint_collection_v2.
 v1 https://github.com/mmvds/py_rmrk_tools/blob/main/examples/mint_nfts_v1.py
 
 v2 https://github.com/mmvds/py_rmrk_tools/blob/main/examples/mint_nfts_v2.py
+
+## v2 Mint base example
+https://github.com/mmvds/py_rmrk_tools/blob/main/examples/mint_base.py
