@@ -5,10 +5,16 @@ You have to set your mnemonic phrase in py_rmrk_tools_config.py
 ```python
 wallet_mnemonic = '<wallet seed phrase>'
 ```
-and Pinata api keys
+and Pinata API keys
 ```python
 pinata_api_key = "pinata_api_key"
 pinata_secret_api_key = "pinata_secret_api_key"
+```
+
+or Nft.storage API keys
+```python
+nft_storage_api_url = "https://api.nft.storage/upload"
+nft_storage_api_key = "your_nft_storage_api_key"
 ```
 
 Production nodes:
