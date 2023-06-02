@@ -4,6 +4,8 @@ from py_rmrk_tools_config import *
 from substrateinterface import SubstrateInterface, Keypair, KeypairType
 from substrateinterface.exceptions import SubstrateRequestException
 from substrateinterface.utils.ss58 import ss58_decode, ss58_encode
+import time
+import requests
 
 substrate = SubstrateInterface(
     url=wss_url,
@@ -11,8 +13,59 @@ substrate = SubstrateInterface(
 )
 
 
+def pin_file(pinata_api_key, pinata_secret_api_key, nft_image_path):
+    api_endpoint = 'https://api.pinata.cloud/pinning/pinFileToIPFS'
+    headers = {
+            "pinata_api_key": pinata_api_key,
+            "pinata_secret_api_key": pinata_secret_api_key
+            }
+    payload={'pinataOptions': '{"cidVersion": 1}'}
+    files=[
+      ('file',(nft_image_path.split('/')[-1], open(nft_image_path,'rb')))
+    ]
+    response = requests.post(url=api_endpoint, headers=headers, data=payload, files=files)
+    return response.json()
+
+
+def pin_json(pinata_api_key, pinata_secret_api_key, json_to_pin):
+    api_endpoint = 'https://api.pinata.cloud/pinning/pinJSONToIPFS'
+    headers = {
+            "pinata_api_key": pinata_api_key,
+            "pinata_secret_api_key": pinata_secret_api_key
+            }
+    payload={'pinataOptions': '{"cidVersion": 1}'}
+    payload["pinataContent"] = json_to_pin
+    response = requests.post(url=api_endpoint, headers=headers, json=payload)
+    return response.json()
+
+
+def pin_nft_file(nft_image_path):
+    header = {
+            "Content-Type": "form-data",
+              "Authorization":"Bearer " + nft_storage_api_key,
+              }
+    data = open(nft_image_path,"rb")
+    response = requests.post(nft_storage_api_url, headers=header,data=data)
+    # print(f"{nft_image_path},{response.json()['value']['cid']}")
+    print(response.json())
+    return response.json()['value']['cid']
+
+
+def pin_nft_json(nft_json):
+    header = {
+            "Content-Type": "form-data",
+              "Authorization":"Bearer " + nft_storage_api_key,
+              }
+    print(json.dumps(nft_json, separators=(',', ':')))
+    response = requests.post(nft_storage_api_url, headers=header,data=json.dumps(nft_json, separators=(',', ':')))
+    # print(f"{nft_json},{response.json()['value']['cid']}")
+    print(response.json())
+    return response.json()['value']['cid']
+
+
 def to_rmrk_price(ksm_price, version):
     return round(ksm_price * 10**12 * (1 - fee_dict[version] / 100))
+
 
 def keypair_from_str(key_string):
     if ' ' in key_string:  # mnemonic
@@ -21,8 +74,10 @@ def keypair_from_str(key_string):
     elif len(key_string) == 66 and key_string[:2] == '0x':
         return Keypair.create_from_seed(key_string, ss58_format=ss58_format_id)
 
+
 def keypair_from_mnemonic(mnemonic_phrase):
     return Keypair.create_from_mnemonic(mnemonic_phrase, ss58_format=ss58_format_id)
+
 
 def send_extrinsic(extrinsic):
     block_hash = ""
@@ -35,6 +90,7 @@ def send_extrinsic(extrinsic):
     except Exception as e:
         print(f"Failed to send: {e}")
     return block_hash
+
 
 def generate_list_calls(
         nfts_for_listing,
@@ -87,6 +143,31 @@ def generate_send_calls(
     return send_calls
 
 
+def generate_resadd_calls(
+        nfts_to_resadd_dict,
+        version,
+        batch_amount=resadd_batch_amount):
+    rmrk_calls = []
+    resadd_calls = []
+
+    nfts_batch = []
+    nft_ids = list(nfts_to_resadd_dict.keys())
+    for nft_id in nft_ids:
+        rmrk_calls.append({
+            'call_module': 'System',
+            'call_function': 'remark',
+            'call_args': {'remark': f"RMRK::RESADD::{version}::{nft_id}::{urllib.parse.quote(json.dumps(nfts_to_resadd_dict[nft_id], separators=(',', ':')))}"}
+        })
+        if len(rmrk_calls) >= batch_amount or nft_id == nft_ids[-1]:
+            resadd_calls.append(substrate.compose_call(
+                call_module="Utility",
+                call_function="batch",
+                call_params={'calls': rmrk_calls}
+            ))
+            rmrk_calls = []
+    return resadd_calls
+
+
 def generate_emote_calls(
         nfts_to_emote,
         emote_list,
@@ -134,7 +215,7 @@ def generate_mint_calls(
             'call_function': 'remark',
             'call_args': {'remark': rmrk_line}
         })
-
+        nft_info_json['instance'] = nft_info_json.get('instance','')
         nfts_in_block.append(f"{nft_info_json['collection']}-{nft_info_json.get('symbol', nft_info_json['instance'])}-{nft_info_json['sn']}")
         if len(rmrk_calls) >= batch_amount or nft_info_json == nfts_info_to_mint[-1]:
             mint_calls.append(substrate.compose_call(
@@ -156,6 +237,7 @@ def send_generated_calls(generated_calls, keypair):
             keypair=keypair,
         )
         block_hashes.append(send_extrinsic(extrinsic))
+        time.sleep(batch_pause)
     return block_hashes
 
 
@@ -167,6 +249,7 @@ def send_send_extrinsics(
     generated_calls = generate_send_calls(
         nfts_to_send_dict, version, batch_amount)
     return send_generated_calls(generated_calls, keypair)
+
 
 def send_emote_extrinsics(
         nfts_to_emote,
@@ -187,6 +270,16 @@ def send_list_extrinsics(
         batch_amount=list_batch_amount):
     generated_calls = generate_list_calls(
         nfts_for_listing, ksm_price, version, batch_amount)
+    return send_generated_calls(generated_calls, keypair)
+
+
+def send_resadd_extrinsics(
+        nfts_to_resadd_dict,
+        version,
+        keypair,
+        batch_amount=resadd_batch_amount):
+    generated_calls = generate_resadd_calls(
+        nfts_to_resadd_dict, version, batch_amount)
     return send_generated_calls(generated_calls, keypair)
 
 
@@ -214,6 +307,8 @@ def send_mint_extrinsics(
         except Exception as e:
             print(f"Failed to mint: {e}")
             break
+        if i != len(generated_calls) - 1:
+            time.sleep(batch_pause)
     return minted_nfts
 
 
@@ -270,6 +365,66 @@ def send_buy_extrinsic(
     )
     return send_extrinsic(extrinsic)
 
+def send_list_send_extrinsic(
+        nft_id,
+        address,
+        ksm_price,
+        version,
+        keypair,
+        send_fee=False):
+    rmrk_calls = [{
+        'call_module': 'System',
+        'call_function': 'remark',
+        'call_args': {'remark': f'RMRK::LIST::{version}::{nft_id}::{to_rmrk_price(ksm_price, version)}'}
+    },
+
+    {
+        'call_module': 'System',
+        'call_function': 'remark',
+        'call_args': {'remark': f'RMRK::SEND::{version}::{nft_id}::{address}'}
+    }
+    
+    ]
+    
+    extrinsic = substrate.create_signed_extrinsic(
+        call=substrate.compose_call(
+            call_module="Utility",
+            call_function="batch_all",
+            call_params={'calls': rmrk_calls}
+        ),
+        keypair=keypair,
+    )
+    return send_extrinsic(extrinsic)
+
+def send_list_list_extrinsic(
+        nft_id,
+        ksm_price,
+        version,
+        keypair):
+    rmrk_calls = [{
+        'call_module': 'System',
+        'call_function': 'remark',
+        'call_args': {'remark': f'RMRK::LIST::{version}::{nft_id}::{to_rmrk_price(ksm_price, version)}'}
+    },
+
+    {
+        'call_module': 'System',
+        'call_function': 'remark',
+        'call_args': {'remark': f'RMRK::LIST::{version}::{nft_id}::{to_rmrk_price(ksm_price / 3, version)}'}
+    },
+    
+    ]
+    
+    extrinsic = substrate.create_signed_extrinsic(
+        call=substrate.compose_call(
+            call_module="Utility",
+            call_function="batch_all",
+            call_params={'calls': rmrk_calls}
+        ),
+        keypair=keypair,
+    )
+    return send_extrinsic(extrinsic)
+
 def change_issuer(
         collection_id,
         new_owner_address,
@@ -278,18 +433,25 @@ def change_issuer(
     extrinsic_text = f"RMRK::CHANGEISSUER::{version}::{collection_id}::{new_owner_address}"
     return send_system_extrinsic(extrinsic_text, keypair)
 
+
+def mint_base(symbol, img_type, parts, version, keypair):
+    base_json = {
+        "symbol": symbol,
+        "type": img_type,
+        "issuer": str(ss58_encode(keypair.public_key, 2)),
+        "parts": parts
+    }
+    extrinsic_text = f"RMRK::BASE::{version}::{urllib.parse.quote(json.dumps(base_json, separators=(',', ':')))}"
+    block_hash = send_system_extrinsic(extrinsic_text, keypair)
+    block_number = substrate.get_block_number(block_hash)
+    base_name = f"base-{block_number}-{symbol}"
+    return base_name
+
+
 def generate_collection_id(keypair, collection_symbol):
     pub_key = keypair.public_key.hex()
     return pub_key[:10] + pub_key[-8:] + '-' + collection_symbol.upper()
 
-# {
-#   "name": "Dot Leap Early Promoters",
-#   "max": 100,
-#   "issuer": "CpjsLDC1JFyrhm3ftC9Gs4QoyrkHKhZKtK7YqGTRFtTafgp",
-#   "symbol": "DLEP",
-#   "id": "0aff6865bed3a66b-DLEP",
-#   "metadata": "ipfs://ipfs/QmVgs8P4awhZpFXhkkgnCwBp4AdKRj3F9K58mCZ6fxvn3j"
-# }
 
 def mint_collection_v1(
         name,
@@ -309,14 +471,6 @@ def mint_collection_v1(
     print(f'Creating {generate_collection_id(keypair, symbol)} collection')
     return send_system_extrinsic(extrinsic_text, keypair)
 
-
-# {
-#   "max": 100,
-#   "issuer": "CpjsLDC1JFyrhm3ftC9Gs4QoyrkHKhZKtK7YqGTRFtTafgp",
-#   "symbol": "DLEP",
-#   "id": "0aff6865bed3a66b-DLEP",
-#   "metadata": "ipfs://ipfs/QmVgs8P4awhZpFXhkkgnCwBp4AdKRj3F9K58mCZ6fxvn3j"
-# }
 
 def mint_collection_v2(
         symbol,
