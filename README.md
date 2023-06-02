@@ -81,3 +81,18 @@ v2 https://github.com/mmvds/py_rmrk_tools/blob/main/examples/mint_nfts_v2.py
 
 ## v2 Mint base example
 https://github.com/mmvds/py_rmrk_tools/blob/main/examples/mint_base.py
+
+## v2 res add example
+```python
+nfts_to_resadd_dict = {}
+for nft_id in minted_nfts:
+    slot_id = '_'.join(nft_id.split('-')[3].split('_')[1:3])
+    nfts_to_resadd_dict[nft_id] = {
+                                    "id":"TEST_COLLECTION_" + generate(size=8),
+                                    "src":"ipfs://ipfs/" + img_slots_dict[slot_id],
+                                    "thumb":"ipfs://ipfs/" + '<thumb_ipfs>',
+                                    "slot": f"{base_id}.TEST_COLLECTION_SLOT_{slot_id}",
+                                    "metadata": 'ipfs://ipfs/' + descriptions_dict[slot_id],
+                                    }
+send_resadd_extrinsics(nfts_to_resadd_dict, '2.0.0', keypair)
+```
