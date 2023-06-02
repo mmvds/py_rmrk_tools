@@ -1,12 +1,16 @@
 # substrate config
-# wss_url = "wss://kusama-rpc.polkadot.io/"
+wss_url = "wss://kusama-rpc.polkadot.io/"
 # wss_url = "wss://node.rmrk.app/"
-wss_url = "wss://staging.node.rmrk.app/" #testnet
-ss58_format_id = 2
+# wss_url = "wss://staging.node.rmrk.app/" #testnet
+ss58_format_id = 2 #Kusama addresses format
 
 # pinata keys
 pinata_api_key = "<pinata_api_key>"
 pinata_secret_api_key = "<pinata_secret_api_key>"
+
+# nft.storage keys (I use this since Pinata limited accounts)
+nft_storage_api_url = "https://api.nft.storage/upload"
+nft_storage_api_key = "<nft_storage_api_key>"
 
 # your wallet
 wallet_mnemonic = '<wallet seed phrase>'
@@ -16,6 +20,8 @@ send_batch_amount = 100
 list_batch_amount = 100
 emote_batch_amount = 100
 mint_batch_amount = 100
+resadd_batch_amount = 100
+batch_pause = 50
 
 # kanaria and singular marketplace fee
 kanaria_fee = 5
